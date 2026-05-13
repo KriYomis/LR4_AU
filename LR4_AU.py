@@ -1,22 +1,9 @@
-"""
-Распознавание изображений на базе НС обратного распространения
-Классы: «+», «V», «O», «sq» — изображения PNG 9x9
-Датасет: train/+/*.png, train/V/*.png, train/O/*.png, train/sq/*.png
- 
-pip install pillow
-"""
- 
 import os
 import math
 import random
 from dataclasses import dataclass
 from PIL import Image
- 
- 
-# ─────────────────────────────────────────────────────────
-#  КОНФИГУРАЦИЯ
-# ─────────────────────────────────────────────────────────
- 
+
 @dataclass
 class NetworkConfig:
     input_size:      int   = 81     # 9x9 пикселей
@@ -26,19 +13,15 @@ class NetworkConfig:
     epochs:          int   = 500    # максимум эпох
     error_threshold: float = 0.01   # порог ошибки для ранней остановки
     random_seed:     int   = 42
- 
- 
-# ─────────────────────────────────────────────────────────
-#  СТРУКТУРЫ ДАННЫХ
-# ─────────────────────────────────────────────────────────
- 
-@dataclass
+
+
+ @dataclass
 class EpochResult:
     epoch:       int
     total_error: float
     accuracy:    float
  
- 
+
 @dataclass
 class EpochTrace:
     epoch:          int
@@ -48,10 +31,6 @@ class EpochTrace:
     weights_output: list   # снимок весов выходного слоя
     details:        list   # текстовый протокол шага
  
- 
-# ─────────────────────────────────────────────────────────
-#  МАТЕМАТИКА  (без сторонних библиотек)
-# ─────────────────────────────────────────────────────────
  
 def sigmoid(x: float) -> float:
     """Сжимает любое число в диапазон (0, 1)."""
@@ -68,22 +47,6 @@ def dot(a: list, b: list) -> float:
     return sum(x * y for x, y in zip(a, b))
  
  
-# ─────────────────────────────────────────────────────────
-#  НЕЙРОННАЯ СЕТЬ
-#
-#  Архитектура: вход(81) -> скрытый(20) -> выход(4)
-#
-#  Прямой проход:
-#    hidden[j] = sigmoid( dot(w_hidden[j], input) + bias_h[j] )
-#    output[k] = sigmoid( dot(w_output[k], hidden) + bias_o[k] )
-#
-#  Обратное распространение:
-#    delta_out[k]    = (target[k] - output[k]) * sigmoid'(output[k])
-#    delta_hidden[j] = sum_k(w_output[k][j] * delta_out[k]) * sigmoid'(hidden[j])
-#    w_output[k][j] += lr * delta_out[k]    * hidden[j]
-#    w_hidden[j][i] += lr * delta_hidden[j] * input[i]
-# ─────────────────────────────────────────────────────────
- 
 class NeuralNetwork:
     def __init__(self, config: NetworkConfig):
         self.config = config
@@ -99,7 +62,6 @@ class NeuralNetwork:
         self.bias_output    = [rng.uniform(-0.5, 0.5) for _ in range(config.output_size)]
  
     def forward(self, inputs: list) -> tuple:
-        """Прямой проход. Возвращает (hidden_outputs, final_outputs)."""
         hidden = [
             sigmoid(dot(self.weights_hidden[j], inputs) + self.bias_hidden[j])
             for j in range(self.config.hidden_size)
@@ -111,7 +73,6 @@ class NeuralNetwork:
         return hidden, output
  
     def backward(self, inputs: list, hidden: list, outputs: list, targets: list) -> float:
-        """Обратное распространение ошибки. Обновляет веса, возвращает MSE."""
         lr = self.config.learning_rate
  
         delta_output = [
@@ -139,25 +100,18 @@ class NeuralNetwork:
                    for k in range(self.config.output_size)) / self.config.output_size
  
     def predict(self, inputs: list) -> int:
-        """Возвращает индекс класса с наибольшим выходом."""
         _, outputs = self.forward(inputs)
         return outputs.index(max(outputs))
  
     def predict_proba(self, inputs: list) -> list:
-        """Возвращает значения всех выходных нейронов."""
         _, outputs = self.forward(inputs)
         return outputs
  
     def snapshot_weights(self) -> tuple:
-        """Копии весов обоих слоёв для протокола."""
         return ([row[:] for row in self.weights_hidden],
                 [row[:] for row in self.weights_output])
  
     def train(self, dataset: list, class_names: list, progress_callback=None) -> tuple:
-        """
-        Обучение методом обратного распространения.
-        Возвращает (history: list[EpochResult], scores: dict).
-        """
         history = []
  
         for epoch in range(1, self.config.epochs + 1):
@@ -206,19 +160,13 @@ class NeuralNetwork:
                 "accuracy": correct / len(dataset)}
  
  
-# ─────────────────────────────────────────────────────────
-#  ЧТЕНИЕ PNG
-# ─────────────────────────────────────────────────────────
- 
 def read_png(filepath: str) -> list:
-    """PNG любого размера -> список из 81 числа (0.0 или 1.0)."""
     img = Image.open(filepath).convert("L").resize((9, 9))
     return [1.0 if img.getpixel((c, r)) < 128 else 0.0
             for r in range(9) for c in range(9)]
  
  
 def load_dataset(folder: str, class_names: list) -> list:
-    """Читает папки folder/<class>/*.png. Индекс в class_names = метка."""
     data = []
     for label, cls in enumerate(class_names):
         path = os.path.join(folder, cls)
@@ -230,11 +178,6 @@ def load_dataset(folder: str, class_names: list) -> list:
                 pixels = read_png(os.path.join(path, fname))
                 data.append({"pixels": pixels, "label": label, "name": fname})
     return data
- 
- 
-# ─────────────────────────────────────────────────────────
-#  ВЫВОД В ТЕРМИНАЛ
-# ─────────────────────────────────────────────────────────
  
 def fitness_bar(value: float, width: int = 20) -> str:
     filled = round(value * width)
@@ -255,10 +198,6 @@ def print_epoch(trace: EpochTrace) -> None:
     print(f"  Прогресс : {fitness_bar(trace.accuracy)}")
     print()
  
- 
-# ─────────────────────────────────────────────────────────
-#  РЕЖИМ РАСПОЗНАВАНИЯ
-# ─────────────────────────────────────────────────────────
  
 def recognize_loop(network: NeuralNetwork, class_names: list) -> None:
     print(f"\n{'─' * 46}")
@@ -285,58 +224,48 @@ def recognize_loop(network: NeuralNetwork, class_names: list) -> None:
         for i, (cls, val) in enumerate(zip(class_names, proba)):
             marker = " <-- победитель" if i == pred else ""
             print(f"    [{i}] {cls:8s}  {val:.4f}  {fitness_bar(val, 10)}{marker}")
- 
- 
-# ─────────────────────────────────────────────────────────
-#  ТОЧКА ВХОДА
-# ─────────────────────────────────────────────────────────
- 
+
+
+random.seed(42)
 CLASS_NAMES = ["+", "V", "O", "sq"]
  
- 
-def main():
-    cfg = NetworkConfig()
-    base_dir = os.path.dirname(os.path.abspath(__file__))
- 
-    print("=" * 46)
-    print("  НС обратного распространения")
-    print("  Классы: " + ", ".join(f"«{c}»" for c in CLASS_NAMES))
-    print("=" * 46)
-    print(f"\n  Входов           : {cfg.input_size}  (9x9 пикселей)")
-    print(f"  Скрытый слой     : {cfg.hidden_size} нейронов")
-    print(f"  Выходов          : {cfg.output_size}  (по одному на класс)")
-    print(f"  Скорость обучения: {cfg.learning_rate}")
-    print(f"  Макс. эпох       : {cfg.epochs}")
-    print(f"  Порог ошибки     : {cfg.error_threshold}")
- 
-    train = load_dataset(os.path.join(base_dir, "train"), CLASS_NAMES)
-    print(f"\n  Загружено обучающих примеров: {len(train)}")
-    for i, cls in enumerate(CLASS_NAMES):
-        count = sum(1 for s in train if s["label"] == i)
-        print(f"    «{cls}» : {count} шт.")
- 
-    network = NeuralNetwork(cfg)
- 
-    print(f"\n{'─' * 46}")
-    print("  РЕЖИМ ОБУЧЕНИЯ")
-    print(f"{'─' * 46}\n")
- 
-    log_every = 50
- 
-    def on_epoch(trace: EpochTrace) -> None:
-        if trace.epoch == 1 or trace.epoch % log_every == 0:
-            print_epoch(trace)
- 
-    history, scores = network.train(train, CLASS_NAMES, progress_callback=on_epoch)
- 
-    print(f"{'─' * 46}")
-    print("  Обучение завершено.")
-    print(f"  Финальная точность : {fitness_bar(scores['accuracy'])}")
-    print(f"  Правильно          : {scores['correct']}/{scores['total']}")
- 
-    recognize_loop(network, CLASS_NAMES)
- 
- 
-if __name__ == "__main__":
-    random.seed(42)
-    main()
+cfg = NetworkConfig()
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+print("=" * 46)
+print("  НС обратного распространения")
+print("  Классы: " + ", ".join(f"«{c}»" for c in CLASS_NAMES))
+print("=" * 46)
+print(f"\n  Входов           : {cfg.input_size}  (9x9 пикселей)")
+print(f"  Скрытый слой     : {cfg.hidden_size} нейронов")
+print(f"  Выходов          : {cfg.output_size}  (по одному на класс)")
+print(f"  Скорость обучения: {cfg.learning_rate}")
+print(f"  Макс. эпох       : {cfg.epochs}")
+print(f"  Порог ошибки     : {cfg.error_threshold}")
+
+train = load_dataset(os.path.join(base_dir, "train"), CLASS_NAMES)
+print(f"\n  Загружено обучающих примеров: {len(train)}")
+for i, cls in enumerate(CLASS_NAMES):
+    count = sum(1 for s in train if s["label"] == i)
+    print(f"    «{cls}» : {count} шт.")
+
+network = NeuralNetwork(cfg)
+
+print(f"\n{'─' * 46}")
+print("  РЕЖИМ ОБУЧЕНИЯ")
+print(f"{'─' * 46}\n")
+
+log_every = 50
+
+def on_epoch(trace: EpochTrace) -> None:
+    if trace.epoch == 1 or trace.epoch % log_every == 0:
+        print_epoch(trace)
+
+history, scores = network.train(train, CLASS_NAMES, progress_callback=on_epoch)
+
+print(f"{'─' * 46}")
+print("  Обучение завершено.")
+print(f"  Финальная точность : {fitness_bar(scores['accuracy'])}")
+print(f"  Правильно          : {scores['correct']}/{scores['total']}")
+
+recognize_loop(network, CLASS_NAMES)
