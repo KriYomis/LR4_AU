@@ -6,16 +6,16 @@ from PIL import Image
 
 @dataclass
 class NetworkConfig:
-    input_size:      int   = 81     # 9x9 пикселей
-    hidden_size:     int   = 20     # нейронов в скрытом слое
-    output_size:     int   = 4      # количество классов
-    learning_rate:   float = 0.1    # скорость обучения
-    epochs:          int   = 500    # максимум эпох
-    error_threshold: float = 0.01   # порог ошибки для ранней остановки
+    input_size:      int   = 81
+    hidden_size:     int   = 20
+    output_size:     int   = 4 
+    learning_rate:   float = 0.01
+    epochs:          int   = 500 
+    error_threshold: float = 0.01
     random_seed:     int   = 42
 
 
- @dataclass
+@dataclass
 class EpochResult:
     epoch:       int
     total_error: float
@@ -27,23 +27,20 @@ class EpochTrace:
     epoch:          int
     total_error:    float
     accuracy:       float
-    weights_hidden: list   # снимок весов скрытого слоя
-    weights_output: list   # снимок весов выходного слоя
-    details:        list   # текстовый протокол шага
+    weights_hidden: list 
+    weights_output: list
+    details:        list  
  
  
 def sigmoid(x: float) -> float:
-    """Сжимает любое число в диапазон (0, 1)."""
     return 1.0 / (1.0 + math.exp(-max(-500, min(500, x))))
  
  
 def sigmoid_derivative(output: float) -> float:
-    """Производная сигмоиды через уже вычисленный выход."""
     return output * (1.0 - output)
  
  
 def dot(a: list, b: list) -> float:
-    """Скалярное произведение двух векторов."""
     return sum(x * y for x, y in zip(a, b))
  
  
@@ -148,7 +145,7 @@ class NeuralNetwork:
                     break
  
             if avg_error < self.config.error_threshold:
-                print(f"\n  Достигнут порог ошибки на эпохе {epoch}!")
+                print(f"\nДостигнут порог ошибки на эпохе {epoch}!")
                 break
  
         scores = self._evaluate(dataset)
@@ -171,18 +168,13 @@ def load_dataset(folder: str, class_names: list) -> list:
     for label, cls in enumerate(class_names):
         path = os.path.join(folder, cls)
         if not os.path.isdir(path):
-            print(f"  Папка не найдена: {path}")
+            print(f"Папка не найдена: {path}")
             continue
         for fname in sorted(os.listdir(path)):
             if fname.lower().endswith(".png"):
                 pixels = read_png(os.path.join(path, fname))
                 data.append({"pixels": pixels, "label": label, "name": fname})
     return data
- 
-def fitness_bar(value: float, width: int = 20) -> str:
-    filled = round(value * width)
-    return f"[{'X' * filled + '.' * (width - filled)}] {value:.0%}"
- 
  
 def print_image(pixels: list) -> None:
     print("  " + "─" * 19)
@@ -195,35 +187,26 @@ def print_image(pixels: list) -> None:
 def print_epoch(trace: EpochTrace) -> None:
     for line in trace.details:
         print(f"  {line}")
-    print(f"  Прогресс : {fitness_bar(trace.accuracy)}")
     print()
  
  
 def recognize_loop(network: NeuralNetwork, class_names: list) -> None:
-    print(f"\n{'─' * 46}")
-    print("  РЕЖИМ РАСПОЗНАВАНИЯ")
-    print("  Введите путь к PNG-файлу (или 'q' для выхода):")
-    print(f"{'─' * 46}")
+    print("\nДЕМОНСТРАЦИЯ")
  
     while True:
-        path = input("\n  Путь к изображению: ").strip()
-        if path.lower() == "q":
-            break
-        if not os.path.isfile(path):
-            print(f"  Файл не найден: {path}")
-            continue
+        path = input("\nПуть к изображению: ").strip()
  
         pixels = read_png(path)
         proba  = network.predict_proba(pixels)
         pred   = proba.index(max(proba))
  
         print_image(pixels)
-        print(f"\n  Результат: «{class_names[pred]}»")
+        print(f"\nРезультат: «{class_names[pred]}»")
         print()
-        print("  Выходы всех нейронов последнего слоя:")
+        print("Выходы всех нейронов последнего слоя:")
         for i, (cls, val) in enumerate(zip(class_names, proba)):
-            marker = " <-- победитель" if i == pred else ""
-            print(f"    [{i}] {cls:8s}  {val:.4f}  {fitness_bar(val, 10)}{marker}")
+            marker = " <-- предсказание" if i == pred else ""
+            print(f"    [{i}] {cls:8s}  {val:.4f}  {marker}")
 
 
 random.seed(42)
@@ -232,40 +215,24 @@ CLASS_NAMES = ["+", "V", "O", "sq"]
 cfg = NetworkConfig()
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-print("=" * 46)
-print("  НС обратного распространения")
-print("  Классы: " + ", ".join(f"«{c}»" for c in CLASS_NAMES))
-print("=" * 46)
-print(f"\n  Входов           : {cfg.input_size}  (9x9 пикселей)")
-print(f"  Скрытый слой     : {cfg.hidden_size} нейронов")
-print(f"  Выходов          : {cfg.output_size}  (по одному на класс)")
-print(f"  Скорость обучения: {cfg.learning_rate}")
-print(f"  Макс. эпох       : {cfg.epochs}")
-print(f"  Порог ошибки     : {cfg.error_threshold}")
+print(f"\nВходов           : {cfg.input_size}  (9x9 пикселей)")
+print(f"Скрытый слой     : {cfg.hidden_size} нейронов")
+print(f"Выходов          : {cfg.output_size}")
+print(f"Скорость обучения: {cfg.learning_rate}")
+print(f"Макс. эпох       : {cfg.epochs}")
+print(f"Порог ошибки     : {cfg.error_threshold}\n")
 
 train = load_dataset(os.path.join(base_dir, "train"), CLASS_NAMES)
-print(f"\n  Загружено обучающих примеров: {len(train)}")
-for i, cls in enumerate(CLASS_NAMES):
-    count = sum(1 for s in train if s["label"] == i)
-    print(f"    «{cls}» : {count} шт.")
 
 network = NeuralNetwork(cfg)
 
-print(f"\n{'─' * 46}")
-print("  РЕЖИМ ОБУЧЕНИЯ")
-print(f"{'─' * 46}\n")
-
-log_every = 50
-
 def on_epoch(trace: EpochTrace) -> None:
-    if trace.epoch == 1 or trace.epoch % log_every == 0:
+    if trace.epoch == 1 or trace.epoch % 10 == 0:
         print_epoch(trace)
 
 history, scores = network.train(train, CLASS_NAMES, progress_callback=on_epoch)
 
-print(f"{'─' * 46}")
-print("  Обучение завершено.")
-print(f"  Финальная точность : {fitness_bar(scores['accuracy'])}")
-print(f"  Правильно          : {scores['correct']}/{scores['total']}")
+print(f"\nMSE после обучения : {history[-1].total_error:.6f}")
+print(f"Правильно          : {scores['correct']}/{scores['total']}")
 
 recognize_loop(network, CLASS_NAMES)
