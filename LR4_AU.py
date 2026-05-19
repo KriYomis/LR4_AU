@@ -1,35 +1,33 @@
-import os
-import math
-import random
+import os, math, random
 from dataclasses import dataclass
 from PIL import Image
 
 @dataclass
 class NetworkConfig:
-    input_size:      int   = 81
-    hidden_size:     int   = 20
-    output_size:     int   = 4 
-    learning_rate:   float = 0.01
-    epochs:          int   = 500 
-    error_threshold: float = 0.01
-    random_seed:     int   = 42
+    input_size:int = 81
+    hidden_size:int = 20
+    output_size:int = 4 
+    learning_rate:float = 0.01
+    epochs:int = 500 
+    error_threshold:float = 0.01
 
+random.seed(42)
 
 @dataclass
 class EpochResult:
-    epoch:       int
-    total_error: float
-    accuracy:    float
+    epoch:int
+    total_error:float
+    accuracy:float
  
 
 @dataclass
 class EpochTrace:
-    epoch:          int
-    total_error:    float
-    accuracy:       float
-    weights_hidden: list 
-    weights_output: list
-    details:        list  
+    epoch:int
+    total_error:float
+    accuracy:float
+    weights_hidden:list 
+    weights_output:list
+    details:list  
  
  
 def sigmoid(x: float) -> float:
@@ -40,31 +38,32 @@ def sigmoid_derivative(output: float) -> float:
     return output * (1.0 - output)
  
  
-def dot(a: list, b: list) -> float:
-    return sum(x * y for x, y in zip(a, b))
+def amount(a: list, b: list) -> float:
+    for i in range(len(a)):
+        for j in range(len(b)):
+            total = sum(a[i] * b[i] for i in range(len(a)))
+    return total
  
  
 class NeuralNetwork:
     def __init__(self, config: NetworkConfig):
         self.config = config
-        rng = random.Random(config.random_seed)
- 
-        def rand_matrix(rows, cols):
-            return [[rng.uniform(-0.5, 0.5) for _ in range(cols)]
-                    for _ in range(rows)]
+        def rand_matrix(r, c):
+            return [[random.uniform(-1.0, 1.0) for _ in range(c)]
+                    for _ in range(r)]
  
         self.weights_hidden = rand_matrix(config.hidden_size, config.input_size)
-        self.bias_hidden    = [rng.uniform(-0.5, 0.5) for _ in range(config.hidden_size)]
+        self.bias_hidden    = [random.uniform(-1.0, 1.0) for _ in range(config.hidden_size)]
         self.weights_output = rand_matrix(config.output_size, config.hidden_size)
-        self.bias_output    = [rng.uniform(-0.5, 0.5) for _ in range(config.output_size)]
+        self.bias_output    = [random.uniform(-1.0, 1.0) for _ in range(config.output_size)]
  
     def forward(self, inputs: list) -> tuple:
         hidden = [
-            sigmoid(dot(self.weights_hidden[j], inputs) + self.bias_hidden[j])
+            sigmoid(amount(self.weights_hidden[j], inputs) + self.bias_hidden[j])
             for j in range(self.config.hidden_size)
         ]
         output = [
-            sigmoid(dot(self.weights_output[k], hidden) + self.bias_output[k])
+            sigmoid(amount(self.weights_output[k], hidden) + self.bias_output[k])
             for k in range(self.config.output_size)
         ]
         return hidden, output
