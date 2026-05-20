@@ -54,7 +54,7 @@ class NeuralNetwork:
 
     def backward(self, inputs: list, hidden: list, outputs: list, targets: list) -> float:
         lr = self.config.learning_rate
-
+        count1 = 1
         delta_output = [
             (targets[k] - outputs[k]) * sigmoid_derivative(outputs[k])
             for k in range(self.config.output_size)
