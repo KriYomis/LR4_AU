@@ -139,7 +139,7 @@ def load_dataset(folder: str, class_names: list) -> list:
 def print_image(pixels: list) -> None:
     print("  " + "─" * 19)
     for r in range(9):
-        row = "".join("##" if pixels[r * 9 + c] else "  " for c in range(9))
+        row = "".join("  " if pixels[r * 9 + c] else "##" for c in range(9))
         print(f"  |{row}|")
     print("  " + "─" * 19)
 
@@ -150,16 +150,15 @@ def print_image(pixels: list) -> None:
 
 CLASS_NAMES = ["+", "V", "O", "sq"]
 cfg = NetworkConfig()
-base_dir = os.path.dirname(os.path.abspath(__file__))
 
-print(f"Входов : {cfg.input_size}  (9x9 пикселей)")
+print(f"Входов : {cfg.input_size}")
 print(f"Скрытый слой : {cfg.hidden_size} нейронов")
 print(f"Выходов : {cfg.output_size}")
 print(f"Скорость обучения: {cfg.learning_rate}")
 print(f"Макс. эпох : {cfg.epochs}")
 print(f"Порог ошибки : {cfg.error_threshold}\n")
 
-train   = load_dataset(os.path.join(base_dir, "train"), CLASS_NAMES)
+train   = load_dataset("train", CLASS_NAMES)
 network = NeuralNetwork(cfg)
 lastMSE = network.train(train)
 
