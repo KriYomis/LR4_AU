@@ -16,7 +16,7 @@ class NetworkConfig:
 
 
 def sigmoid(x: float) -> float:
-    return 1.0 / (1.0 + math.exp(-max(-500, min(500, x))))
+    return 1.0 / (1.0 + math.exp(-x))
 
 
 def sigmoid_derivative(output: float) -> float:
@@ -32,13 +32,13 @@ class NeuralNetwork:
         self.config = cfg
         random.seed(42)
 
-        def rand_matrix(r, c):
+        def _matrix(r, c):
             return [[random.uniform(-cfg.weight_range, cfg.weight_range) for _ in range(c)]
                     for _ in range(r)]
 
-        self.weights_hidden = rand_matrix(cfg.hidden_size, cfg.input_size)
+        self.weights_hidden = _matrix(cfg.hidden_size, cfg.input_size)
         self.bias_hidden    = [random.uniform(-cfg.bias_range, cfg.bias_range) for _ in range(cfg.hidden_size)]
-        self.weights_output = rand_matrix(cfg.output_size, cfg.hidden_size)
+        self.weights_output = _matrix(cfg.output_size, cfg.hidden_size)
         self.bias_output    = [random.uniform(-cfg.bias_range, cfg.bias_range) for _ in range(cfg.output_size)]
 
     def forward(self, inputs: list) -> tuple:
@@ -88,11 +88,12 @@ class NeuralNetwork:
         return outputs
 
     def train(self, dataset: list) -> tuple:
-        history = []
+        historyMSE = []
 
         for epoch in range(1, self.config.epochs + 1):
             random.shuffle(dataset)
-            total_error, correct = 0.0, 0
+            total_error = 0.0
+            correct = 0
 
             for sample in dataset:
                 targets = [0.0] * self.config.output_size
@@ -103,8 +104,7 @@ class NeuralNetwork:
                     correct += 1
 
             avg_error = total_error / len(dataset)
-            accuracy  = correct / len(dataset)
-            history.append(avg_error)
+            accuracy  = correct / len(dataset)            
 
             if epoch == 1 or epoch % 10 == 0:
                 print(f"Эпоха {epoch:>4} | MSE: {avg_error:.6f} | Точность: {accuracy:.1%}")
@@ -116,10 +116,7 @@ class NeuralNetwork:
                 print(f"Достигнут порог ошибки на эпохе {epoch}!")
                 break
 
-        correct = sum(1 for s in dataset if self.predict(s["pixels"]) == s["label"])
-        scores  = {"correct": correct, "total": len(dataset),
-                   "accuracy": correct / len(dataset)}
-        return history, scores
+        return avg_error
 
 
 def read_png(filepath: str) -> list:
@@ -147,27 +144,8 @@ def print_image(pixels: list) -> None:
     print("  " + "─" * 19)
 
 
-def recognize_loop(network: NeuralNetwork, class_names: list) -> None:
-    print("\nДЕМОНСТРАЦИЯ")
 
-    while True:
-        path = input("\nПуть к изображению: ").strip()
-        if path.lower() == "q":
-            break
-        if not os.path.isfile(path):
-            print(f"Файл не найден: {path}")
-            continue
 
-        pixels = read_png(path)
-        proba  = network.predict_proba(pixels)
-        pred   = proba.index(max(proba))
-
-        print_image(pixels)
-        print(f"\nРезультат: {class_names[pred]}")
-        print("\nВыходы нейронов последнего слоя:")
-        for i, (cls, val) in enumerate(zip(class_names, proba)):
-            marker = " <-- предсказание" if i == pred else ""
-            print(f"  [{i}] {cls:8s}  {val:.4f}{marker}")
 
 
 CLASS_NAMES = ["+", "V", "O", "sq"]
@@ -183,9 +161,25 @@ print(f"Порог ошибки : {cfg.error_threshold}\n")
 
 train   = load_dataset(os.path.join(base_dir, "train"), CLASS_NAMES)
 network = NeuralNetwork(cfg)
-history, scores = network.train(train)
+lastMSE = network.train(train)
 
-print(f"\nMSE после обучения : {history[-1]:.6f}")
-print(f"Правильно          : {scores['correct']}/{scores['total']}")
+print(f"\nMSE после обучения : {lastMSE:.6f}")
 
-recognize_loop(network, CLASS_NAMES)
+print("\nДЕМОНСТРАЦИЯ")
+
+while True:
+    path = input("\nПуть к изображению: ").strip()
+    if not os.path.isfile(path):
+        print(f"Файл не найден: {path}")
+        continue
+
+    pixels = read_png(path)
+    proba  = network.predict_proba(pixels)
+    pred   = proba.index(max(proba))
+
+    print_image(pixels)
+    print(f"\nРезультат: {CLASS_NAMES[pred]}")
+    print("\nВыходы нейронов последнего слоя:")
+    for i, (cls, val) in enumerate(zip(CLASS_NAMES, proba)):
+        marker = " <-- предсказание" if i == pred else ""
+        print(f"  [{i}] {cls:8s}  {val:.4f}{marker}")
