@@ -54,7 +54,7 @@ class NeuralNetwork:
 
     def backward(self, inputs: list, hidden: list, outputs: list, targets: list) -> float:
         lr = self.config.learning_rate
-        count1 = 1
+        
         delta_output = [
             (targets[k] - outputs[k]) * sigmoid_derivative(outputs[k])
             for k in range(self.config.output_size)
@@ -87,7 +87,7 @@ class NeuralNetwork:
         _, outputs = self.forward(inputs)
         return outputs
 
-    def train(self, dataset: list) -> tuple:
+    def train(self, dataset: list, val: list) -> tuple:
         historyMSE = []
 
         for epoch in range(1, self.config.epochs + 1):
@@ -107,7 +107,10 @@ class NeuralNetwork:
             accuracy  = correct / len(dataset)            
 
             if epoch == 1 or epoch % 10 == 0:
-                print(f"Эпоха {epoch:>4} | MSE: {avg_error:.6f} | Точность: {accuracy:.1%}")
+                val_correct = sum(1 for s in val if self.predict(s["pixels"]) == s["label"])
+                val_errors  = len(val) - val_correct
+                print(f"Эпоха {epoch:>4} | MSE: {avg_error:.6f} | Точность: {accuracy:.1%} | "
+                      f"Ошибка валидации: {val_errors/len(val):.1%}")
 
             #if accuracy == 1.0:
             #    print(f"Достигнута 100% точность на эпохе {epoch}!")
@@ -133,6 +136,7 @@ def load_dataset(folder: str, class_names: list) -> list:
             if fname.lower().endswith(".png"):
                 pixels = read_png(os.path.join(path, fname))
                 data.append({"pixels": pixels, "label": label, "name": fname})
+    print(f"Правильные ответы: { [s['label'] for s in data] }\n")
     return data
 
 
@@ -158,9 +162,10 @@ print(f"Скорость обучения: {cfg.learning_rate}")
 print(f"Макс. эпох : {cfg.epochs}")
 print(f"Порог ошибки : {cfg.error_threshold}\n")
 
-train   = load_dataset("train", CLASS_NAMES)
+train = load_dataset("train", CLASS_NAMES)
+demo = load_dataset("demo", CLASS_NAMES)
 network = NeuralNetwork(cfg)
-lastMSE = network.train(train)
+lastMSE = network.train(train, demo)
 
 print(f"\nMSE после обучения : {lastMSE:.6f}")
 
