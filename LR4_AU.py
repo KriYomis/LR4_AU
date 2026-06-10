@@ -88,7 +88,6 @@ class NeuralNetwork:
         return outputs
 
     def train(self, dataset: list, val: list) -> tuple:
-        historyMSE = []
 
         for epoch in range(1, self.config.epochs + 1):
             random.shuffle(dataset)
