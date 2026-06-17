@@ -10,7 +10,7 @@ class NetworkConfig:
     output_size: int = 4
     learning_rate: float = 0.01
     epochs: int = 500
-    error_threshold: float = 0.01
+    error_min: float = 0.01
     weight_range: float = 0.5   
     bias_range: float = 1.0   
 
@@ -114,8 +114,8 @@ class NeuralNetwork:
             #if accuracy == 1.0:
             #    print(f"Достигнута 100% точность на эпохе {epoch}!")
             #    break
-            if avg_error < self.config.error_threshold:
-                print(f"Достигнут порог ошибки на эпохе {epoch}!")
+            if avg_error < self.config.error_min:
+                print(f"Достигнут минимум ошибки на эпохе {epoch}!")
                 break
 
         return avg_error
@@ -159,7 +159,7 @@ print(f"Скрытый слой : {cfg.hidden_size} нейронов")
 print(f"Выходов : {cfg.output_size}")
 print(f"Скорость обучения: {cfg.learning_rate}")
 print(f"Макс. эпох : {cfg.epochs}")
-print(f"Порог ошибки : {cfg.error_threshold}\n")
+print(f"Мин. ошибка : {cfg.error_min}\n")
 
 train = load_dataset("train", CLASS_NAMES)
 demo = load_dataset("demo", CLASS_NAMES)
