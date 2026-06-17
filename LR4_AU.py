@@ -24,7 +24,10 @@ def sigmoid_derivative(output: float) -> float:
 
 
 def amount(a: list, b: list) -> float:
-    return sum(x * y for x, y in zip(a, b))
+    summ = 0.0
+    for x,y in zip(a, b):
+        summ += x * y
+    return summ
 
 
 class NeuralNetwork:
@@ -33,38 +36,68 @@ class NeuralNetwork:
         random.seed(42)
 
         def _matrix(r, c):
-            return [[random.uniform(-cfg.weight_range, cfg.weight_range) for _ in range(c)]
-                    for _ in range(r)]
+            matrix = []
+            for i in range(r):
+                row = []
+
+                for j in range(c):
+                    value = random.uniform(-cfg.weight_range, cfg.weight_range)
+                    row.append(value)
+
+                matrix.append(row)
+
+            return matrix
+
 
         self.weights_hidden = _matrix(cfg.hidden_size, cfg.input_size)
-        self.bias_hidden    = [random.uniform(-cfg.bias_range, cfg.bias_range) for _ in range(cfg.hidden_size)]
+
+        self.bias_hidden = []
+        for i in range(cfg.hidden_size):
+            value = random.uniform(-cfg.bias_range, cfg.bias_range)
+            self.bias_hidden.append(value)
+
         self.weights_output = _matrix(cfg.output_size, cfg.hidden_size)
-        self.bias_output    = [random.uniform(-cfg.bias_range, cfg.bias_range) for _ in range(cfg.output_size)]
+
+        self.bias_output = []
+        for i in range(cfg.output_size):
+            value = random.uniform(-cfg.bias_range, cfg.bias_range)
+            self.bias_output.append(value)
 
     def forward(self, inputs: list) -> tuple:
-        hidden = [
-            sigmoid(amount(self.weights_hidden[j], inputs) + self.bias_hidden[j])
-            for j in range(self.config.hidden_size)
-        ]
-        output = [
-            sigmoid(amount(self.weights_output[k], hidden) + self.bias_output[k])
-            for k in range(self.config.output_size)
-        ]
+        hidden = []
+
+        for j in range(self.config.hidden_size):
+            net = amount(self.weights_hidden[j], inputs) + self.bias_hidden[j]
+            value = sigmoid(net)
+            hidden.append(value)
+
+        output = []
+
+        for k in range(self.config.output_size):
+            net = amount(self.weights_output[k], hidden) + self.bias_output[k]
+            value = sigmoid(net)
+            output.append(value)
+        
         return hidden, output
 
     def backward(self, inputs: list, hidden: list, outputs: list, targets: list) -> float:
         lr = self.config.learning_rate
         
-        delta_output = [
-            (targets[k] - outputs[k]) * sigmoid_derivative(outputs[k])
-            for k in range(self.config.output_size)
-        ]
-        delta_hidden = [
-            sum(self.weights_output[k][j] * delta_output[k]
-                for k in range(self.config.output_size))
-            * sigmoid_derivative(hidden[j])
-            for j in range(self.config.hidden_size)
-        ]
+        delta_output = []
+
+        for k in range(self.config.output_size):
+            error = targets[k] - outputs[k]
+            delta = error * sigmoid_derivative(outputs[k])
+            delta_output.append(delta)
+
+        delta_hidden = []
+
+        for j in range(self.config.hidden_size):
+            summ = 0.0
+            for k in range(self.config.output_size):
+                summ += self.weights_output[k][j] * delta_output[k]
+            delta = summ * sigmoid_derivative(hidden[j])
+            delta_hidden.append(delta)
 
         for k in range(self.config.output_size):
             for j in range(self.config.hidden_size):
@@ -123,8 +156,18 @@ class NeuralNetwork:
 
 def read_png(filepath: str) -> list:
     img = Image.open(filepath).convert("L").resize((9, 9))
-    return [1.0 if img.getpixel((c, r)) < 128 else 0.0
-            for r in range(9) for c in range(9)]
+    
+    pixels = []
+
+    for r in range(9):
+        for c in range(9):
+            pixel = img.getpixel((c, r))
+
+            if pixel < 128:
+                pixels.append(1.0)
+            else:
+                pixels.append(0.0)
+    return pixels
 
 
 def load_dataset(folder: str, class_names: list) -> list:
@@ -142,7 +185,13 @@ def load_dataset(folder: str, class_names: list) -> list:
 def print_image(pixels: list) -> None:
     print("  " + "─" * 19)
     for r in range(9):
-        row = "".join("  " if pixels[r * 9 + c] else "##" for c in range(9))
+        row = ""
+        for c in range(9):
+            pixel = pixels[r * 9 + c]
+            if pixel:
+                row += "  "
+            else:
+                row += "##"
         print(f"  |{row}|")
     print("  " + "─" * 19)
 
@@ -184,5 +233,7 @@ while True:
     print(f"\nРезультат: {CLASS_NAMES[pred]}")
     print("\nВыходы нейронов последнего слоя:")
     for i, (cls, val) in enumerate(zip(CLASS_NAMES, proba)):
-        marker = " <-- предсказание" if i == pred else ""
+        marker = ""
+        if i == pred:
+            marker = " <-- предсказание"
         print(f"  [{i}] {cls:8s}  {val:.4f}{marker}")
