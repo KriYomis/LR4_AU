@@ -35,28 +35,25 @@ class NeuralNetwork:
         self.config = cfg
         random.seed(42)
 
-        def _matrix(r, c):
-            matrix = []
+        def matrix(r, c):
+            _matrix = []
             for i in range(r):
                 row = []
-
                 for j in range(c):
                     value = random.uniform(-cfg.weight_range, cfg.weight_range)
                     row.append(value)
-
-                matrix.append(row)
-
-            return matrix
+                _matrix.append(row)
+            return _matrix
 
 
-        self.weights_hidden = _matrix(cfg.hidden_size, cfg.input_size)
+        self.weights_hidden = matrix(cfg.hidden_size, cfg.input_size)
 
         self.bias_hidden = []
         for i in range(cfg.hidden_size):
             value = random.uniform(-cfg.bias_range, cfg.bias_range)
             self.bias_hidden.append(value)
 
-        self.weights_output = _matrix(cfg.output_size, cfg.hidden_size)
+        self.weights_output = matrix(cfg.output_size, cfg.hidden_size)
 
         self.bias_output = []
         for i in range(cfg.output_size):
