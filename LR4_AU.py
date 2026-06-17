@@ -124,12 +124,12 @@ class NeuralNetwork:
             total_error = 0.0
             correct = 0
 
-            for sample in dataset:
+            for one in dataset:
                 targets = [0.0] * self.config.output_size
-                targets[sample["label"]] = 1.0
-                hidden, outputs = self.forward(sample["pixels"])
-                total_error += self.backward(sample["pixels"], hidden, outputs, targets)
-                if outputs.index(max(outputs)) == sample["label"]:
+                targets[one["label"]] = 1.0
+                hidden, outputs = self.forward(one["pixels"])
+                total_error += self.backward(one["pixels"], hidden, outputs, targets)
+                if outputs.index(max(outputs)) == one["label"]:
                     correct += 1
 
             avg_error = total_error / len(dataset)
