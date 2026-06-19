@@ -1,6 +1,8 @@
 import os, math, random
 from dataclasses import dataclass
 from PIL import Image
+#LLM импорт для визуализации
+from weight_visualizer import show_inference_path, show_weight_history
 
 
 @dataclass
@@ -11,7 +13,7 @@ class NetworkConfig:
     learning_rate: float = 0.01
     epochs: int = 500
     error_min: float = 0.01
-    weight_range: float = 0.5   
+    weight_range: float = 0.0   
     bias_range: float = 1.0   
 
 
@@ -34,6 +36,8 @@ class NeuralNetwork:
     def __init__(self, cfg: NetworkConfig):
         self.config = cfg
         random.seed(42)
+        #LLM инициализация истории весов и метрик
+        self.weight_history = []
 
         def matrix(r, c):
             _matrix = []
@@ -59,6 +63,20 @@ class NeuralNetwork:
         for i in range(cfg.output_size):
             value = random.uniform(-cfg.bias_range, cfg.bias_range)
             self.bias_output.append(value)
+        #LLM запись начальных весов и метрик
+        self.record_weight_snapshot(0, None, None, None)
+    #LLM метод для записи истории весов и метрик
+    def record_weight_snapshot(self, epoch: int, avg_error: float, accuracy: float, val_error: float) -> None:
+        hidden_copy = [row[:] for row in self.weights_hidden]
+        output_copy = [row[:] for row in self.weights_output]
+        self.weight_history.append({
+            "epoch": epoch,
+            "hidden": hidden_copy,
+            "output": output_copy,
+            "avg_error": avg_error,
+            "accuracy": accuracy,
+            "val_error": val_error,
+        })
 
     def forward(self, inputs: list) -> tuple:
         hidden = []
@@ -83,9 +101,14 @@ class NeuralNetwork:
         delta_output = []
 
         for k in range(self.config.output_size):
-            error = targets[k] - outputs[k]
+            error = 2*(targets[k] - outputs[k])
             delta = error * sigmoid_derivative(outputs[k])
             delta_output.append(delta)
+
+        for k in range(self.config.output_size):
+            for j in range(self.config.hidden_size):
+                self.weights_output[k][j] += lr * delta_output[k] * hidden[j]
+            self.bias_output[k] += lr * delta_output[k]
 
         delta_hidden = []
 
@@ -96,10 +119,6 @@ class NeuralNetwork:
             delta = summ * sigmoid_derivative(hidden[j])
             delta_hidden.append(delta)
 
-        for k in range(self.config.output_size):
-            for j in range(self.config.hidden_size):
-                self.weights_output[k][j] += lr * delta_output[k] * hidden[j]
-            self.bias_output[k] += lr * delta_output[k]
 
         for j in range(self.config.hidden_size):
             for i in range(self.config.input_size):
@@ -118,6 +137,7 @@ class NeuralNetwork:
         return outputs
 
     def train(self, dataset: list, val: list) -> tuple:
+        avg_error = 0.0
 
         for epoch in range(1, self.config.epochs + 1):
             random.shuffle(dataset)
@@ -134,12 +154,15 @@ class NeuralNetwork:
 
             avg_error = total_error / len(dataset)
             accuracy  = correct / len(dataset)            
+            val_correct = sum(1 for s in val if self.predict(s["pixels"]) == s["label"])
+            val_errors  = len(val) - val_correct
+            val_error = val_errors / len(val)
+            #LLM запись истории весов и метрик
+            self.record_weight_snapshot(epoch, avg_error, accuracy, val_error)
 
             if epoch == 1 or epoch % 10 == 0:
-                val_correct = sum(1 for s in val if self.predict(s["pixels"]) == s["label"])
-                val_errors  = len(val) - val_correct
                 print(f"Эпоха {epoch:>4} | MSE: {avg_error:.6f} | Точность: {accuracy:.1%} | "
-                      f"Ошибка валидации: {val_errors/len(val):.1%}")
+                      f"Ошибка валидации: {val_error:.1%}")
 
             #if accuracy == 1.0:
             #    print(f"Достигнута 100% точность на эпохе {epoch}!")
@@ -161,9 +184,9 @@ def read_png(filepath: str) -> list:
             pixel = img.getpixel((c, r))
 
             if pixel < 128:
-                pixels.append(1.0)
-            else:
                 pixels.append(0.0)
+            else:
+                pixels.append(1.0)
     return pixels
 
 
@@ -211,6 +234,8 @@ train = load_dataset("train", CLASS_NAMES)
 demo = load_dataset("demo", CLASS_NAMES)
 network = NeuralNetwork(cfg)
 lastMSE = network.train(train, demo)
+#LLM визуализация весов
+show_weight_history(network.weight_history, CLASS_NAMES, input_side=9)
 
 print(f"\nMSE после обучения : {lastMSE:.6f}")
 
@@ -223,8 +248,9 @@ while True:
         continue
 
     pixels = read_png(path)
-    proba  = network.predict_proba(pixels)
+    hidden, proba = network.forward(pixels)
     pred   = proba.index(max(proba))
+    show_inference_path(path, pixels, hidden, proba, CLASS_NAMES, pred)
 
     print_image(pixels)
     print(f"\nРезультат: {CLASS_NAMES[pred]}")
